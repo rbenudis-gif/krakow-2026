@@ -1,0 +1,61 @@
+name: Update Krakow App
+
+on:
+  workflow_dispatch:
+    inputs:
+      find_text:
+        description: 'טקסט לחיפוש (בדיוק כפי שמופיע)'
+        required: true
+        type: string
+      replace_text:
+        description: 'טקסט חדש (להחליף איתו)'
+        required: true
+        type: string
+      change_description:
+        description: 'מה שינית? (לתיאור הגרסה)'
+        required: false
+        type: string
+        default: 'עדכון מהנייד'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply change
+        env:
+          FIND: ${{ inputs.find_text }}
+          REPLACE: ${{ inputs.replace_text }}
+        run: |
+          python3 - <<'EOF'
+          import os, sys
+
+          find = os.environ['FIND']
+          replace = os.environ['REPLACE']
+
+          with open('index.html', 'r', encoding='utf-8') as f:
+              content = f.read()
+
+          if find not in content:
+              print(f"שגיאה: הטקסט לא נמצא בקובץ: {find!r}")
+              sys.exit(1)
+
+          count = content.count(find)
+          new_content = content.replace(find, replace)
+
+          with open('index.html', 'w', encoding='utf-8') as f:
+              f.write(new_content)
+
+          print(f"הוחלפו {count} מופעים בהצלחה")
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.email "rbenudis@gmail.com"
+          git config user.name "Reut Benudis"
+          git add index.html
+          git commit -m "${{ inputs.change_description }}"
+          git push
